@@ -1,0 +1,196 @@
+=== CREATE YOUR VM FIRST ===
+Requirements :
+~ pip = 21.1.2
+~ python => 3.6.9
+~ add this tags : allow-flask-server, http-server, https-server
+
+1) Open SSH vm
+sudo apt-get update
+
+sudo apt install nginx
+
+sudo apt install ufw
+
+sudo ufw app list
+
+sudo ufw allow 'Nginx HTTP'
+
+sudo ufw status
+
+type 'Q'
+
+sudo ufw enable
+
+systemctl status nginx
+
+
+2) Exit SSH, edit your vm then add this custom metadata :
+~ Key : startup-script
+~ Value : #! /bin/bash
+sudo ufw allow 22
+
+3) Open SSH vm again then clone from your repository
+git clone https://github.com/Areks9620/New_FitBatik_App.git
+
+sudo apt install python3-pip python3-dev build-essential libssl-dev libffi-dev python3-setuptools
+
+sudo apt install python3-venv
+
+4) Download Model Data Training then add it at one folder with app.py (if model training didn't exist at running app.py, please upload it manully)
+curl -L "https://drive.google.com/file/d/1l7PUB8uAGRyqvZ0ti0ZACoI2CzJxOVoI/view" > save_ckp_frozen.h5
+
+python3 -m venv appenv
+
+
+source appenv/bin/activate
+
+
+python3 -m pip install --upgrade pip
+
+
+pip install -r requirements.txt
+
+sudo apt install libgl1-mesa-glx
+
+pip install wheel
+
+
+pip install uwsgi flask
+
+
+sudo ufw allow 5000
+
+python app.py
+
+
+http://EXTERNAL_IP:5000
+
+
+5) type Ctrl + C, then add this file
+
+nano ~/app/wsgi.py
+===
+from app import app
+
+if __name__ == "__main__":
+    app.run()
+===
+
+uwsgi --socket 0.0.0.0:5000 --protocol=http -w wsgi:app
+
+
+http://EXTERNAL_IP:5000
+
+
+6) type Ctrl + C, then deactivate the virtual environment
+deactivate
+
+
+7) add this file for configuration to serve Flask API with Nginx and uWSGI
+nano ~/app/app.ini
+=======
+[uwsgi]
+module = wsgi:app
+
+master = true
+processes = 5
+
+socket = app.sock
+chmod-socket = 660
+vacuum = true
+
+die-on-term = true
+========
+
+
+*** This is the correct script *** 
+[REVISI SCRIPT]
+nano ~/app/app.ini
+=======
+[uwsgi]
+module = wsgi:app
+
+master = false
+processes = 1
+
+socket = app.sock
+chmod-socket = 660
+vacuum = true
+
+die-on-term = true
+
+cheaper = 0
+
+lazy-apps = true 
+========
+
+
+8) add file service using root 
+sudo nano /etc/systemd/system/app.service
+======
+[Unit]
+Description=uWSGI instance to serve app
+After=network.target
+
+[Service]
+User=c1941945
+Group=www-data
+WorkingDirectory=/home/c1941945/app
+Environment="PATH=/home/c1941945/app/appenv/bin"
+ExecStart=/home/c1941945/app/appenv/bin/uwsgi --ini app.ini
+
+[Install]
+WantedBy=multi-user.target
+======
+
+
+sudo systemctl start app
+sudo systemctl daemon-reload
+sudo systemctl enable app
+
+
+sudo systemctl status app
+
+type 'Q'
+
+sudo nano /etc/nginx/sites-available/app
+====
+server {
+    listen 80;
+    server_name 35.185.180.158 www.35.185.180.158;
+
+    location / {
+        include uwsgi_params;
+        uwsgi_pass unix:/home/c1941945/app/app.sock;
+    }
+}
+====
+
+
+sudo ln -s /etc/nginx/sites-available/app /etc/nginx/sites-enabled
+sudo nginx -t
+sudo systemctl restart nginx
+
+
+
+sudo ufw delete allow 5000
+sudo ufw allow 'Nginx Full'
+
+sudo systemctl restart nginx
+
+sudo reboot now
+
+http://EXTERNAL_IP
+
+9) if you have updated code, please run this command
+
+sudo nginx -t
+sudo systemctl restart nginx
+sudo reboot now
+
+
+10) Delete Nginx and uWSGI
+
+sudo apt-get purge nginx nginx-common
+
+sudo apt-get purge ufw
